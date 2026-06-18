@@ -47,12 +47,24 @@ uint16_t Motor402::getMode()
 
 bool Motor402::isModeSupportedByDevice(uint16_t mode)
 {
-  uint32_t supported_modes =
-    driver->universal_get_value<uint32_t>(supported_drive_modes_index, 0x0);
-  bool supported = supported_modes & (1 << (mode - 1));
   bool below_max = mode <= 32;
   bool above_min = mode > 0;
-  return below_max && above_min && supported;
+  if (!below_max || !above_min)
+  {
+    return false;
+  }
+
+  try
+  {
+    uint32_t supported_modes =
+      driver->universal_get_value<uint32_t>(supported_drive_modes_index, 0x0);
+    return supported_modes & (1 << (mode - 1));
+  }
+  catch (...)
+  {
+    // Drives such as ZLAC8030L omit 0x6502; assume standard CiA402 modes are available.
+    return true;
+  }
 }
 void Motor402::registerMode(uint16_t id, const ModeSharedPtr & m)
 {
