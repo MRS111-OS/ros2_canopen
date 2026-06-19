@@ -54,16 +54,21 @@ bool Motor402::isModeSupportedByDevice(uint16_t mode)
     return false;
   }
 
+  // Do not SDO-read 0x6502 — many drives omit it on the bus (noisy errors).
+  // Use the EDS default bitmask instead; if absent, allow all modes except homing.
   try
   {
     uint32_t supported_modes =
-      driver->universal_get_value<uint32_t>(supported_drive_modes_index, 0x0);
+      driver->get_dictionary_value<uint32_t>(supported_drive_modes_index, 0x0);
+    if (supported_modes == 0)
+    {
+      return mode != MotorBase::Homing;
+    }
     return supported_modes & (1 << (mode - 1));
   }
   catch (...)
   {
-    // Drives such as ZLAC8030L omit 0x6502; assume standard CiA402 modes are available.
-    return true;
+    return mode != MotorBase::Homing;
   }
 }
 void Motor402::registerMode(uint16_t id, const ModeSharedPtr & m)

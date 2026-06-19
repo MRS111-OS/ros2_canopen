@@ -779,6 +779,38 @@ public:
   }
 
   template <typename T>
+  T get_dictionary_value(uint16_t index, uint8_t subindex)
+  {
+    T value = 0;
+    std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
+    if (typeid(T) == typeid(uint8_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_UNSIGNED8>(index, subindex);
+    }
+    if (typeid(T) == typeid(uint16_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_UNSIGNED16>(index, subindex);
+    }
+    if (typeid(T) == typeid(uint32_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_UNSIGNED32>(index, subindex);
+    }
+    if (typeid(T) == typeid(int8_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_INTEGER8>(index, subindex);
+    }
+    if (typeid(T) == typeid(int16_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_INTEGER16>(index, subindex);
+    }
+    if (typeid(T) == typeid(int32_t))
+    {
+      value = this->dictionary_->getVal<CO_DEFTYPE_INTEGER32>(index, subindex);
+    }
+    return value;
+  }
+
+  template <typename T>
   const T universal_get_value(uint16_t index, uint8_t subindex)
   {
     T value = 0;

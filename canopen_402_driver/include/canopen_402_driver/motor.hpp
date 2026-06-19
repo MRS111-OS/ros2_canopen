@@ -156,8 +156,7 @@ public:
    * @brief Register a new operation mode for the drive
    *
    * This function will register an operation mode for the drive.
-   * It will check if the mode is supported by the drive by reading
-   * 0x6508 object.
+   * It will check if the mode is supported by the drive.
    *
    * @tparam T
    * @tparam Args
