@@ -379,6 +379,8 @@ protected:
    */
   void OnRpdoWrite(uint16_t idx, uint8_t subidx) noexcept override;
 
+  void push_rpdo_mapped_to_queue(uint16_t idx, uint8_t subidx);
+
   /**
    * The function invoked when an EMCY message is received from the remote node.
    * @todo This function should use a threadsafe queue not the icky implementation we have now.

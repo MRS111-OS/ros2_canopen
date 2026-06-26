@@ -126,14 +126,11 @@ void LelyDriverBridge::OnBoot(canopen::NmtState st, char es, const ::std::string
 //     });
 // }
 
-void LelyDriverBridge::OnRpdoWrite(uint16_t idx, uint8_t subidx) noexcept
+void LelyDriverBridge::push_rpdo_mapped_to_queue(uint16_t idx, uint8_t subidx)
 {
   lely::COSub * sub = this->dictionary_->find(idx, subidx);
   if (sub == nullptr)
   {
-    std::cout << "OnRpdoWrite: id=" << (unsigned int)this->get_id() << " index=0x" << std::hex
-              << (unsigned int)idx << " subindex=" << (unsigned int)subidx
-              << " object does not exist" << std::endl;
     return;
   }
   uint8_t co_def = (uint8_t)sub->getType();
@@ -144,40 +141,63 @@ void LelyDriverBridge::OnRpdoWrite(uint16_t idx, uint8_t subidx) noexcept
     sub->setVal<CO_DEFTYPE_UNSIGNED8>((uint8_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_UNSIGNED8>(), 1);
   }
-  if (co_def == CO_DEFTYPE_INTEGER8)
+  else if (co_def == CO_DEFTYPE_INTEGER8)
   {
     std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
     sub->setVal<CO_DEFTYPE_INTEGER8>((int8_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_INTEGER8>(), 1);
   }
-  if (co_def == CO_DEFTYPE_UNSIGNED16)
+  else if (co_def == CO_DEFTYPE_UNSIGNED16)
   {
     std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
     sub->setVal<CO_DEFTYPE_UNSIGNED16>((uint16_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_UNSIGNED16>(), 2);
   }
-  if (co_def == CO_DEFTYPE_INTEGER16)
+  else if (co_def == CO_DEFTYPE_INTEGER16)
   {
     std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
     sub->setVal<CO_DEFTYPE_INTEGER16>((int16_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_INTEGER16>(), 2);
   }
-  if (co_def == CO_DEFTYPE_UNSIGNED32)
+  else if (co_def == CO_DEFTYPE_UNSIGNED32)
   {
     std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
     sub->setVal<CO_DEFTYPE_UNSIGNED32>((uint32_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_UNSIGNED32>(), 4);
   }
-  if (co_def == CO_DEFTYPE_INTEGER32)
+  else if (co_def == CO_DEFTYPE_INTEGER32)
   {
     std::scoped_lock<std::mutex> lck(this->dictionary_mutex_);
     sub->setVal<CO_DEFTYPE_INTEGER32>((int32_t)rpdo_mapped[idx][subidx]);
     std::memcpy(&data, &sub->getVal<CO_DEFTYPE_INTEGER32>(), 4);
   }
-  COData codata = {idx, subidx, data};
+  else
+  {
+    return;
+  }
+  rpdo_queue->push(COData{idx, subidx, data});
+}
 
-  //  We do not care so much about missing a message, rather push them through.
-  rpdo_queue->push(codata);
+void LelyDriverBridge::OnRpdoWrite(uint16_t idx, uint8_t subidx) noexcept
+{
+  lely::COSub * sub = this->dictionary_->find(idx, subidx);
+  if (sub == nullptr)
+  {
+    std::cout << "OnRpdoWrite: id=" << (unsigned int)this->get_id() << " index=0x" << std::hex
+              << (unsigned int)idx << " subindex=" << (unsigned int)subidx
+              << " object does not exist" << std::endl;
+    return;
+  }
+  push_rpdo_mapped_to_queue(idx, subidx);
+
+  // TPDO3 health (0x2029, 0x6077, 0x2026:1/2): Lely often invokes OnRpdoWrite only for the
+  // last mapped sub-index. Fan out the full bundle when the anchor object updates.
+  if (idx == 0x2026 && subidx == 2)
+  {
+    push_rpdo_mapped_to_queue(0x2029, 0);
+    push_rpdo_mapped_to_queue(0x6077, 0);
+    push_rpdo_mapped_to_queue(0x2026, 1);
+  }
 }
 
 void LelyDriverBridge::OnEmcy(uint16_t eec, uint8_t er, uint8_t msef[5]) noexcept
