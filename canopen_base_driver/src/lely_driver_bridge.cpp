@@ -190,6 +190,13 @@ void LelyDriverBridge::OnRpdoWrite(uint16_t idx, uint8_t subidx) noexcept
   }
   push_rpdo_mapped_to_queue(idx, subidx);
 
+  // TPDO1 (0x6041, 0x6061, 0x603F): fan out when the last mapped object updates.
+  if (idx == 0x603F && subidx == 0)
+  {
+    push_rpdo_mapped_to_queue(0x6041, 0);
+    push_rpdo_mapped_to_queue(0x6061, 0);
+  }
+
   // TPDO3 health (0x2029, 0x6077, 0x2026:1/2): Lely often invokes OnRpdoWrite only for the
   // last mapped sub-index. Fan out the full bundle when the anchor object updates.
   if (idx == 0x2026 && subidx == 2)
